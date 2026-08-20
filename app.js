@@ -1,8 +1,23 @@
-const businesses=[{name:'Sharma Manufacturing',category:'Manufacturing',location:'Bhopal, MP',need:'Distributors',emoji:'🏭'},{name:'FastTrack Distributors',category:'Distribution',location:'Indore, MP',need:'Manufacturers',emoji:'🚚'},{name:'CityMart Retail',category:'Retail',location:'Bhopal, MP',need:'Suppliers',emoji:'🏪'},{name:'GreenFarm Foods',category:'Food & Agriculture',location:'Sehore, MP',need:'Retail partners',emoji:'🌾'},{name:'TechCraft Solutions',category:'Technology',location:'Indore, MP',need:'Business clients',emoji:'💻'},{name:'Aarav Logistics',category:'Logistics',location:'Bhopal, MP',need:'Business contracts',emoji:'📦'}];
 const $=s=>document.querySelector(s),grid=$('#businessGrid'),search=$('#search'),category=$('#category');
-function render(){const q=search.value.toLowerCase(),c=category.value,list=businesses.filter(b=>(!q||[b.name,b.category,b.location,b.need].join(' ').toLowerCase().includes(q))&&(!c||b.category===c));grid.innerHTML=list.map(b=>`<article class="biz"><div class="bizicon">${b.emoji}</div><div><h3>${b.name}</h3><p>${b.category} · ${b.location}</p><span>Looking for: ${b.need}</span></div><button class="connect" onclick="connect()">Connect</button></article>`).join('')||'<div class="empty">No matching businesses found.</div>'}
+let client;
+async function render(){
+  if(!client){grid.innerHTML='<div class="empty">Loading businesses…</div>';return}
+  const q=search.value.trim(),c=category.value;
+  let query=client.from('businesses').select('id,name,category,location,description').order('created_at',{ascending:false}).limit(24);
+  if(c) query=query.eq('category',c);
+  if(q) query=query.or(`name.ilike.%${q}%,category.ilike.%${q}%,location.ilike.%${q}%,description.ilike.%${q}%`);
+  const {data,error}=await query;
+  if(error){grid.innerHTML=`<div class="empty">Unable to load businesses. ${error.message}</div>`;return}
+  grid.innerHTML=(data||[]).map(b=>`<article class="biz"><div class="bizicon">🏢</div><div><h3>${escapeHtml(b.name)}</h3><p>${escapeHtml(b.category||'Business')} · ${escapeHtml(b.location||'Location not listed')}</p><span>${escapeHtml(b.description||'Open to business connections')}</span></div><button class="connect" onclick="openBusiness('${b.id}')">View</button></article>`).join('')||'<div class="empty">No matching businesses found.</div>';
+}
+function escapeHtml(v){return String(v||'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
+function openBusiness(id){location.href=`business.html?id=${encodeURIComponent(id)}`}
 function openModal(title,body){$('#modalTitle').textContent=title;$('#modalBody').innerHTML=body;$('#modal').classList.add('show')}
 function connect(){openModal('Sign in to connect',`<p>Create a real business account to connect, message businesses and send structured enquiries.</p><a class="btn primary" href="auth.html">Sign in / Create account</a>`)}
 function openSignup(){location.href='auth.html'}
 function closeModal(){$('#modal').classList.remove('show')}
-search.addEventListener('input',render);category.addEventListener('change',render);render();
+async function init(){
+  if(window.supabase){client=window.supabase.createClient(window.KHARA_SUPABASE_URL,window.KHARA_SUPABASE_PUBLISHABLE_KEY);await render()}
+  else grid.innerHTML='<div class="empty">Supabase client unavailable.</div>';
+}
+search.addEventListener('input',render);category.addEventListener('change',render);init();
