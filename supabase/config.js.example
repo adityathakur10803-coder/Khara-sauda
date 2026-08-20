@@ -1,0 +1,4 @@
+// Copy to config.js and replace with your project's publishable key.
+// Never put a service_role/secret key in browser code.
+window.KHARA_SUPABASE_URL = 'https://bnmkvovfouxrffacsoll.supabase.co';
+window.KHARA_SUPABASE_PUBLISHABLE_KEY = 'YOUR_PUBLISHABLE_KEY';
